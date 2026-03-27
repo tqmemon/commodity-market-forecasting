@@ -1,42 +1,34 @@
-# Metal Price Dynamics: Testing the "Broken Haven" & Silver Catch-up Theories
-This project investigates the evolving relationship between precious metals and macroeconomic indicators. We are testing two specific theories: whether gold has lost its "safe-haven" status post-2022, and whether silver prices are primarily driven by gold price parity (the "catch-up" theory).
+## Overview
+This project investigates whether the traditional "safe-haven" status of gold and 10-year US Treasury bonds broke down during and after the COVID-19 pandemic. By analyzing macro-financial indicators across three distinct periods (Pre-COVID, COVID, and Post-COVID), we aim to identify if changes in asset behavior represent a temporary shock or a structural shift in the market.
 
-Developed for ECON 323 at the University of British Columbia.
+## Data Sources
+* **Kaggle**: [Gold & Geopolitical Risk (1985-2025)](https://www.kaggle.com/datasets/shreyanshdangi/gold-silver-price-vs-geopolitical-risk-19852025/data)
+* **FRED API**: 
+    * `VIXCLS` (Market Volatility / VIX)
+    * `DEXUSEU` (USD/EUR Exchange Rate)
+    * `DFF` (Federal Funds Rate)
+    * `SP500` (S&P 500 Index)
+    * `DGS10` (10-Year Treasury Yield)
 
-## 1. The "Broken Haven" Investigation (Gold)
+## Methodology
+1.  **Data Preprocessing**: Calculate log-returns to ensure time-series stationarity and create interaction terms (e.g., `VIX_x_PostCovid`) to test for structural breaks.
+2.  **Machine Learning (Feature Selection)**: Utilize a cross-validated Lasso Regression (`scikit-learn`) to handle multicollinearity and algorithmically select the most statistically relevant variables.
+3.  **Econometric Inference**: Apply ordinary least squares (OLS) regression via `statsmodels` on the selected features, utilizing HC3 robust standard errors to correct for heteroskedasticity.
 
-Historically, gold prices rise during geopolitical tension and high inflation. However, recent trends suggest this relationship may be decoupling.
+## Repository Structure & Workflow
+To prevent Git merge conflicts with Jupyter notebooks, this repository uses a modular pipeline. **Please do not edit files outside of your assigned task without coordinating with the team.**
 
-Methodology: Multivariate LASSO Regression.
+* `1_data_ingestion.py`: Pulls FRED API data, merges it with the local Kaggle CSV, and outputs `raw_data.csv`. *(Assigned to: Member 1)*
+* `2_data_cleaning.py`: Handles missing values, calculates log-returns, generates dummy variables, and outputs `final_model_data.csv`. *(Assigned to: Member 2)*
+* `3_lasso_model.ipynb`: Standardizes features, runs Lasso regression, and outputs the selected variables. *(Assigned to: Member 3)*
+* `4_ols_inference.ipynb`: Runs statsmodels OLS on the selected features and generates summary tables. *(Assigned to: Member 4)*
+* `5_visualizations.ipynb`: Contains all EDA plots and final charts for the presentation. *(Assigned to: Member 5)*
 
-The Experiment: Build and cross-validate a model using pre-2022 data. We will then use this model to predict post-2022 prices; significant variance will serve as evidence that the "safe-haven" mechanics have fundamentally changed.
-
-Key Variables: Real Rates (Bond Yields - CPI), USD Exchange Rate (DEXUSEU), Geopolitical Risk Index, and Market Volatility (VIX).
-
-## 2. The Silver "Catch-up" Theory
-
-This theory suggests that when the Gold/Silver ratio becomes overextended, silver prices spike to bridge the gap.
-
-Methodology: Random Forest.
-
-The Experiment: We are using a Random Forest ensemble to determine the "Feature Importance" of silver price predictors. If Gold price is identified as the strongest predictor over industrial demand indicators, it provides quantitative support for the catch-up theory.
-
-Key Variables: Gold prices, Industrial Demand controls (Renewables/Battery data), and Investment Demand (ETF flows).
-
-### Data Sources
-
-We are integrating disparate datasets to ensure a robust analysis:
-
-Financial Data: Federal Reserve Economic Data (FRED) for VIX, CPI, and Treasury yields.
-
-Commodity Data: Kaggle/Bloomberg for historical Gold/Silver closing prices.
-
-Geopolitical Data: Geopolitical Risk Index (GPR).
-
-### Team Roadmap
-
-Phase 1: Data cleaning and alignment of time-series frequencies (Daily vs. Monthly).
-
-Phase 2: Running the LASSO model to isolate significant macroeconomic "Safe Haven" drivers.
-
-Phase 3: Training the Random Forest to rank predictors for Silver price spikes.
+## Setup & Git Instructions (PyCharm)
+1. **Clone the Repo:** Open PyCharm, select `Get from VCS` (or `Git -> Clone` from the top menu), and paste the GitHub repository URL.
+2. **Install Packages:** Open the PyCharm terminal at the bottom and run:
+   `pip install pandas pandas-datareader scikit-learn statsmodels matplotlib`
+3. **Daily Workflow:** * **Pull:** Always click the blue "Update Project" arrow at the top right before starting work to get everyone's latest code.
+   * **Branch:** Create a new branch for your task using the Git widget in the bottom right corner (e.g., `feature/data-cleaning`).
+   * **Commit & Push:** Use the green checkmark at the top right to commit your work and push it to GitHub.
+4. **Notebook Rule:** Always click **"Restart Kernel and Clear All Outputs"** in your Jupyter notebook before committing to prevent massive merge conflicts!
