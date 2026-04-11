@@ -1,0 +1,760 @@
+<html>
+<head>
+<title>FINAL_Commodity_Asset_Pricing-2.ipynb</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #ebebeb;}
+.s1 { color: #7ec3e6;}
+.s2 { color: #ebebeb;}
+.s3 { color: #ed864a;}
+.s4 { color: #54b33e;}
+.s5 { color: #ed864a; font-weight: bold;}
+.s6 { color: #33ccff; font-weight: bold;}
+.ls0 { height: 1px; border-width: 0; color: #cccccc; background-color:#cccccc}
+</style>
+</head>
+<body bgcolor="#131314">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+FINAL_Commodity_Asset_Pricing-2.ipynb</font>
+</center></td></tr></table>
+<pre><span class="s0">#%% md 
+# ASSET-COMMODITY PRICING 
+## ECON 323                                              
+                                                                      
+**GROUP 3 &amp; GROUP 4**  
+ 
+**MEMBERS** 
+- Yashas Ganesh Prasad 
+- Taha Memon 
+- Jasper Yang 
+- Xuanfu Zhu 
+- Syed Zaim Naqvi 
+ 
+**TABLE OF CONTENTS** 
+- Introduction 
+- Data Ingestion 
+- Data Cleaning 
+- Data Modelling &amp; Inference 
+- Data Visualization 
+- Conclusion 
+- Sources 
+ 
+# **1. INTRODUCTION** 
+ 
+Gold has long played a dual role in the global financial system as both a commodity and a monetary asset with huge economic value (World Gold Council, 2025), distinguishing it from traditional financial securities such as equities and fixed-income instruments. **Unlike stocks or bonds, gold does not generate cash flows (Jaffer, 2024), and its valuation is therefore not based on discounted future earnings**. Instead, gold prices are primarily driven by **macroeconomic fundamentals (like inflation, unemployment, and overall GDP-per-capita growth), financial market conditions, and investor sentiment** (J.P. Morgan, 2025; World Gold Council, 2025). This distinctive characteristic has made gold a focal point in financial economics, particularly in **discussions surrounding portfolio diversification, inflation hedging, and safe-haven behaviour**. 
+ 
+A core finding in the literature is that the real interest rates (interest rates after taking into account inflation) are the primary driver of gold prices. Higher real yields increase the opportunity cost of holding gold, placing downward pressure on its price, while lower or negative real rates tend to support higher gold prices. Closely related is inflation expectations, which influence real rates and shape gold's role as a hedge against declining purchasing power, showing the safe-haven behaviour of gold (Bampinas &amp; Panagiotidis, 2015). 
+ 
+The traditional safe-haven hypothesis suggests that **gold should exhibit a negative relationship with risky assets, such as equities**, and a positive relationship with measures of uncertainty, such as market volatility. This has often been supported by empirical evidence, even during economic recessions, such as the Global Financial Crisis in 2008, when gold prices increased despite declines in equity markets (Baur &amp; McDermott, 2010).  
+ 
+However, the economic environment following the COVID-19 pandemic has raised questions about the stability of the relationship posited by the safe-haven hypothesis (Li, 2020). The unprecedented monetary expansion during the COVID-19 pandemic and the transition to **monetary tightening beginning on March 16, 2022 (li, 2023), combined with elevated inflation and heightened market volatility, have caused gold prices to deviate from their expected role as a traditional safe-haven asset**. In particular, periods of simultaneous declines in both equity markets and gold prices, along with stronger sensitivity to interest rate movements, suggest a potential shift in gold's role within financial markets. 
+ 
+This has led to the emergence of the Broken Safe-Haven hypothesis (Faraj et al., 2025), which argues that gold's ability to hedge against market risk may have weakened in the post-COVID-19 period.  
+ 
+To examine this hypothesis, this study adopts a multivariate empirical framework incorporating key macroeconomic and financial variables. Given the potential for multicollinearity among these variables, the analysis uses **LASSO regression, OLS analysis and XGBoost Machine Learning** to assess whether gold continues to function as a safe-haven asset in the post-COVID-19 period. 
+ 
+**Research Question** 
+ 
+Using an empirical framework, does the safe-haven hypothesis for gold prices hold in the post-COVID-19 period, or is there evidence of a structural weakening in its safe-haven properties consistent with a &quot;broken safe-haven&quot; dynamic? 
+ 
+ <hr class="ls0">#%% md 
+# **2. DATA INGESTION** 
+ 
+The dataset used in this study is constructed from a combination of sources to ensure both data availability and reliability across the key variables. The primary gold price data is obtained from a dataset hosted on Kaggle, which provides a comprehensive dataset on historical gold price series in a structured and readable format. This dataset serves as the dependent variable in the analysis. 
+ 
+The explanatory variables, covering macroeconomic and financial indicators, are sourced from the Federal Reserve Economic Data (FRED), and Yahoo Finance. These platforms are widely used in empirical finance research due to their high-frequency, reliable, and continuously updated data. 
+ 
+A key advantage of using FRED and Yahoo Finance is the ability to directly import data (via APIs). This eliminates the need for manual downloading and the updating of datasets, ensuring reproducibility, efficiency, and consistency in the data collection process. 
+ 
+By integrating data from these sources, the final dataset captures a comprehensive set of variables necessary to analyze gold price dynamics within a multivariate empirical framework. 
+ <hr class="ls0">#%% 
+</span><span class="s1">#installing required libraries</span>
+<span class="s2">!</span><span class="s0">pip install pandas</span>
+<span class="s2">!</span><span class="s0">pip install fredapi</span>
+<span class="s2">!</span><span class="s0">pip install yfinance</span><hr class="ls0"><span class="s0">#%% 
+</span><span class="s3">import </span><span class="s0">pandas </span><span class="s3">as </span><span class="s0">pd</span>
+
+<span class="s0">gold_data = pd.read_csv(</span><span class="s4">&quot;Gold-Silver-GeopoliticalRisk_HistoricalData.csv&quot;</span><span class="s0">) </span><span class="s1">#allows import of locally downloaded dataset</span>
+<span class="s0">gold_data[</span><span class="s4">'DATE'</span><span class="s0">] = pd.to_datetime(gold_data[</span><span class="s4">'DATE'</span><span class="s0">]) </span><span class="s1">#changes the data type of the column &quot;DATE&quot; to date-time</span>
+<span class="s0">gold_data.set_index(</span><span class="s4">'DATE'</span><span class="s5">, </span><span class="s0">inplace=</span><span class="s3">True</span><span class="s0">) </span><span class="s1">#sets DATE as the index of the dataframe</span>
+<span class="s0">gold_data = gold_data[gold_data.index &gt;= </span><span class="s4">'1999-01-01'</span><span class="s0">] </span><span class="s1">#filters the data to only get data after January 1st 1999</span>
+<span class="s0">gold_data</span><hr class="ls0"><span class="s0">#%% 
+</span><span class="s3">from </span><span class="s0">fredapi </span><span class="s3">import </span><span class="s0">Fred</span>
+<span class="s0">fred = Fred(api_key=</span><span class="s4">&quot;77607617679b9e388bc1c17f17bf0874&quot;</span><span class="s0">) </span><span class="s1">#using FRED-generated API key to import data directly from FRED database</span>
+
+<span class="s0">end = </span><span class="s4">'2025-09-10'</span>
+<span class="s0">start = </span><span class="s4">'1991-01-01'</span>
+
+<span class="s1"># this involves forming a dataframe of various variables imported from the FRED database, using date as the index</span>
+<span class="s1"># using a specific observation_start and observation_end argument ensures that data is within the required dates</span>
+<span class="s0">df1 = pd.DataFrame({</span>
+<span class="s4">'interest_rate' </span><span class="s0">: fred.get_series(</span><span class="s4">'REAINTRATREARAT10Y'</span><span class="s5">, </span><span class="s0">observation_start = start</span><span class="s5">, </span><span class="s0">observation_end = end)</span><span class="s5">, </span>
+<span class="s4">'inflation_rate' </span><span class="s0">: fred.get_series(</span><span class="s4">'FPCPITOTLZGUSA'</span><span class="s5">, </span><span class="s0">observation_start = start</span><span class="s5">, </span><span class="s0">observation_end = end)</span><span class="s5">,</span>
+<span class="s4">'expected_inflation' </span><span class="s0">: fred.get_series(</span><span class="s4">'EXPINF10YR'</span><span class="s5">, </span><span class="s0">observation_start = start</span><span class="s5">, </span><span class="s0">observation_end = end)</span><span class="s5">,</span>
+<span class="s4">'gdp' </span><span class="s0">: fred.get_series(</span><span class="s4">'GDP'</span><span class="s5">, </span><span class="s0">observation_start = start</span><span class="s5">, </span><span class="s0">observation_end = end)</span><span class="s5">,</span>
+<span class="s4">'10_year_treasury_note_yield' </span><span class="s0">: fred.get_series(</span><span class="s4">'WM2NS'</span><span class="s5">, </span><span class="s0">observation_start = start</span><span class="s5">, </span><span class="s0">observation_end = end)</span><span class="s5">,</span>
+<span class="s4">'wti_crude_oil_price' </span><span class="s0">: fred.get_series(</span><span class="s4">'POILWTIUSDM'</span><span class="s5">, </span><span class="s0">observation_start = start</span><span class="s5">, </span><span class="s0">observation_end = end)})</span><hr class="ls0"><span class="s0">#%% 
+</span><span class="s3">import </span><span class="s0">yfinance </span><span class="s3">as </span><span class="s0">yf</span>
+<span class="s1"># this involves importing data for various variables from Yahoo Finance directly</span>
+<span class="s1"># by specifying the start and end arguments, the data will be within the required dates</span>
+<span class="s0">gold_futures = yf.download(</span><span class="s4">'MGC=F'</span><span class="s5">, </span><span class="s0">start=start</span><span class="s5">, </span><span class="s0">end=end)</span>
+<span class="s0">vix = yf.download(</span><span class="s4">'^VIX'</span><span class="s5">, </span><span class="s0">start=start</span><span class="s5">, </span><span class="s0">end=end)</span>
+<span class="s0">us_dollar = yf.download(</span><span class="s4">'DX-Y.NYB'</span><span class="s5">, </span><span class="s0">start=start</span><span class="s5">, </span><span class="s0">end=end)</span>
+<span class="s0">s_and_p_500 = yf.download(</span><span class="s4">'^GSPC'</span><span class="s5">, </span><span class="s0">start=start</span><span class="s5">, </span><span class="s0">end=end)</span><hr class="ls0"><span class="s0">#%% 
+</span><span class="s1">#merging all separate variables into one dataframe, using a column-wise concatenation</span>
+<span class="s0">raw_data = pd.concat([df1</span><span class="s5">, </span><span class="s0">s_and_p_500</span><span class="s5">, </span><span class="s0">vix</span><span class="s5">, </span><span class="s0">us_dollar</span><span class="s5">,</span><span class="s0">gold_futures]</span><span class="s5">, </span><span class="s0">axis=</span><span class="s6">1</span><span class="s0">)</span>
+<span class="s0">raw_data</span><hr class="ls0"><span class="s0">#%% 
+</span><span class="s1">#exporting merged dataframe as a csv file</span>
+<span class="s0">raw_data.to_csv(</span><span class="s4">&quot;raw_data.csv&quot;</span><span class="s5">, </span><span class="s0">index=</span><span class="s3">True</span><span class="s0">)</span><hr class="ls0"><span class="s0">#%% md 
+# 3. DATA CLEANING and OVERVIEW <hr class="ls0">#%% md 
+</span>
+
+<span class="s0">Two datasets will be used for our analysis. We will use both daily and weekly aggregated market data. While daily data will contain more observations and variation, market variables are often volatile and noisy on a daily basis so we have also constructed an aggregated weekly version to use in our models. 
+ 
+To ensure our regression results aren't &quot;spurious,&quot; we transform raw prices into Log-Returns, which achieves stationarity. We also generate the Interaction Terms necessary to test the &quot;Broken-Haven&quot; hypothesis, specifically looking at how gold's relationship with the VIX changed after March 16th, 2022. 
+ 
+We've also constructed lagged variables to identify autoregressive relationship since commodity demand is often reactive to market conditions. 
+ <hr class="ls0">#%% 
+</span><span class="s1">##### import pandas as pd</span>
+<span class="s3">import </span><span class="s0">numpy </span><span class="s3">as </span><span class="s0">np</span>
+<span class="s3">import </span><span class="s0">matplotlib.pyplot </span><span class="s3">as </span><span class="s0">plt</span>
+<span class="s3">from </span><span class="s0">sklearn.linear_model </span><span class="s3">import </span><span class="s0">LassoCV</span>
+<span class="s3">from </span><span class="s0">sklearn.preprocessing </span><span class="s3">import </span><span class="s0">StandardScaler</span>
+<span class="s3">from </span><span class="s0">sklearn.model_selection </span><span class="s3">import </span><span class="s0">TimeSeriesSplit</span>
+
+<span class="s1"># loading the raw ingested data</span>
+<span class="s1"># using index_col=0 as the date is the first unnamed column in raw_data.csv</span>
+<span class="s0">df = pd.read_csv(</span><span class="s4">'raw_data.csv'</span><span class="s5">, </span><span class="s0">index_col=</span><span class="s6">0</span><span class="s5">, </span><span class="s0">parse_dates=</span><span class="s3">True</span><span class="s0">)</span>
+<span class="s0">df.index.name = </span><span class="s4">'DATE'</span>
+
+<span class="s1"># sorting the index to ensure Time-Series logic works correctly</span>
+<span class="s0">df.sort_index(inplace=</span><span class="s3">True</span><span class="s0">)</span>
+
+<span class="s1"># standardizing column names by removing special characters</span>
+<span class="s0">df.columns = [</span>
+    <span class="s0">col.replace(</span><span class="s4">&quot;('&quot;</span><span class="s5">, </span><span class="s4">&quot;&quot;</span><span class="s0">).replace(</span><span class="s4">&quot;', '&quot;</span><span class="s5">, </span><span class="s4">&quot;_&quot;</span><span class="s0">).replace(</span><span class="s4">&quot;')&quot;</span><span class="s5">, </span><span class="s4">&quot;&quot;</span><span class="s0">)</span>
+    <span class="s0">.replace(</span><span class="s4">&quot;^&quot;</span><span class="s5">, </span><span class="s4">&quot;&quot;</span><span class="s0">).replace(</span><span class="s4">&quot;-&quot;</span><span class="s5">, </span><span class="s4">&quot;_&quot;</span><span class="s0">).replace(</span><span class="s4">&quot;.&quot;</span><span class="s5">, </span><span class="s4">&quot;_&quot;</span><span class="s0">).replace(</span><span class="s4">&quot;=&quot;</span><span class="s5">, </span><span class="s4">&quot;_&quot;</span><span class="s0">)</span>
+    <span class="s3">for </span><span class="s0">col </span><span class="s3">in </span><span class="s0">df.columns</span>
+<span class="s0">]</span>
+
+<span class="s1"># dropping columns that are completely empty to prevent data loss</span>
+<span class="s0">df.dropna(axis=</span><span class="s6">1</span><span class="s5">, </span><span class="s0">how=</span><span class="s4">'all'</span><span class="s5">, </span><span class="s0">inplace=</span><span class="s3">True</span><span class="s0">)</span>
+
+<span class="s1"># forward filling missing daily gaps in monthly/quarterly macro data</span>
+<span class="s0">df.ffill(inplace=</span><span class="s3">True</span><span class="s0">)</span>
+
+<span class="s1"># calculating Log-Returns for stationarity</span>
+<span class="s1"># formula: ln(Price_t) - ln(Price_t-1)</span>
+<span class="s0">df[</span><span class="s4">'gold_ret'</span><span class="s0">] = np.log(df[</span><span class="s4">'Close_MGC_F'</span><span class="s0">]).diff()</span>
+<span class="s0">df[</span><span class="s4">'sp500_ret'</span><span class="s0">] = np.log(df[</span><span class="s4">'Close_GSPC'</span><span class="s0">]).diff()</span>
+<span class="s0">df[</span><span class="s4">'sp500_ret_lag'</span><span class="s0">] = df[</span><span class="s4">'sp500_ret'</span><span class="s0">].shift(</span><span class="s6">1</span><span class="s0">)</span>
+
+<span class="s1"># defining structural break dummies for the analysis</span>
+<span class="s1"># this marks the post-pandemic period starting in 2022</span>
+<span class="s0">df[</span><span class="s4">'is_PostCovid'</span><span class="s0">] = (df.index &gt;= </span><span class="s4">'2022-03-16'</span><span class="s0">).astype(int)</span>
+
+<span class="s1"># 1-Day Return Lag</span>
+<span class="s0">df[</span><span class="s4">'gold_ret_lag'</span><span class="s0">] = df[</span><span class="s4">'gold_ret'</span><span class="s0">].shift(</span><span class="s6">1</span><span class="s0">)</span>
+
+<span class="s1"># 5-Day Volatility Lag (Rolling standard deviation of the last 5 days)</span>
+<span class="s0">df[</span><span class="s4">'gold_vol_lag'</span><span class="s0">] = df[</span><span class="s4">'gold_ret'</span><span class="s0">].rolling(window=</span><span class="s6">5</span><span class="s0">).std().shift(</span><span class="s6">1</span><span class="s0">)</span>
+
+<span class="s1"># 1-Day Lag VIX Closing Score</span>
+<span class="s0">df[</span><span class="s4">'Close_VIX_lag'</span><span class="s0">] = df[</span><span class="s4">'Close_VIX'</span><span class="s0">].shift(</span><span class="s6">1</span><span class="s0">)</span>
+
+<span class="s1"># creating interaction terms (VIX x Post-Covid) to test the structural shift</span>
+<span class="s0">df[</span><span class="s4">'VIX_x_PostCovid'</span><span class="s0">] = df[</span><span class="s4">'Close_VIX'</span><span class="s0">] * df[</span><span class="s4">'is_PostCovid'</span><span class="s0">]</span>
+
+<span class="s1"># removing NaNs created by the diff and lag functions</span>
+<span class="s0">df.dropna(inplace=</span><span class="s3">True</span><span class="s0">)</span>
+
+<span class="s1"># exporting the final cleaned dataset</span>
+<span class="s0">df.to_csv(</span><span class="s4">'final_model_data.csv'</span><span class="s0">)</span>
+<span class="s0">df.head(</span><span class="s6">5</span><span class="s0">)</span><hr class="ls0"><span class="s0">#%% md 
+### Variable Description 
+ 
+This table lists the main working variables used in the final cleaned modelling dataset. 
+ 
+| Variable (units) | What it measures | 
+|---|---| 
+| `interest_rate` (%) | U.S. interest rate series used as a macro-financial driver in the model. | 
+| `inflation_rate` (annual %) | U.S. inflation rate series. | 
+| `expected_inflation` (%) | U.S. expected inflation over a future horizon. | 
+| `gdp` (billions of USD, SAAR) | U.S. gross domestic product level. | 
+| `10_year_treasury_note_yield` (%) | U.S. 10-year Treasury yield. | 
+| `wti_crude_oil_price` (USD/barrel) | WTI crude oil price, used as a global commodity / inflation-sensitive market indicator. | 
+| `Close_GSPC` (index level) | S&amp;P 500 closing level, measuring broad U.S. equity market performance. | 
+| `High_GSPC` (index level) | Daily high level of the S&amp;P 500. | 
+| `Low_GSPC` (index level) | Daily low level of the S&amp;P 500. | 
+| `Open_GSPC` (index level) | Daily opening level of the S&amp;P 500. | 
+| `Close_VIX` (index level) | VIX closing level, measuring expected near-term U.S. stock market volatility. | 
+| `Close_DX_Y_NYB` (index level) | U.S. Dollar Index closing level, measuring dollar strength against major currencies. | 
+| `Close_MGC_F` (USD per gold futures unit) | Closing price of gold futures used to construct gold returns. | 
+| `Open_MGC_F` (USD per gold futures unit) | Opening price of the gold futures contract. | 
+| `Volume_MGC_F` (contracts) | Trading volume of the gold futures contract. | 
+| `gold_ret` (log return) | Daily log return on gold futures, calculated from `Close_MGC_F`. | 
+| `sp500_ret` (log return) | Daily log return on the S&amp;P 500, calculated from `Close_GSPC`. | 
+| `sp500_ret_lag` (log return, 1-day lag) | Previous trading day’s S&amp;P 500 log return. | 
+| `is_PostCovid` (0/1 dummy) | Indicator for the post-structural-break period beginning on 2022-03-16. | 
+| `gold_ret_lag` (log return, 1-day lag) | Previous trading day’s gold log return. | 
+| `gold_vol_lag` (rolling standard deviation of log returns) | Lagged 5-day rolling volatility of gold returns. | 
+| `Close_VIX_lag` (index level, 1-day lag) | Previous trading day’s VIX closing level. | 
+| `VIX_x_PostCovid` (interaction term) | Interaction between `Close_VIX` and `is_PostCovid`, used to test whether the VIX–gold relationship changes after the break. | <hr class="ls0">#%% 
+</span><span class="s1">#Converting Data to Weekly</span>
+<span class="s0">df_weekly = pd.DataFrame()</span>
+
+<span class="s1"># Returns are summed (The total return over the week)</span>
+<span class="s0">df_weekly[</span><span class="s4">'gold_ret'</span><span class="s0">] = df[</span><span class="s4">'gold_ret'</span><span class="s0">].resample(</span><span class="s4">'W'</span><span class="s0">).sum()</span>
+<span class="s0">df_weekly[</span><span class="s4">'sp500_ret'</span><span class="s0">] = df[</span><span class="s4">'sp500_ret'</span><span class="s0">].resample(</span><span class="s4">'W'</span><span class="s0">).sum()</span>
+
+<span class="s1"># Macro rates are averaged (The average environment for the week)</span>
+<span class="s0">df_weekly[</span><span class="s4">'interest_rate'</span><span class="s0">] = df[</span><span class="s4">'interest_rate'</span><span class="s0">].resample(</span><span class="s4">'W'</span><span class="s0">).mean()</span>
+<span class="s0">df_weekly[</span><span class="s4">'expected_inflation'</span><span class="s0">] = df[</span><span class="s4">'expected_inflation'</span><span class="s0">].resample(</span><span class="s4">'W'</span><span class="s0">).mean()</span>
+<span class="s0">df_weekly[</span><span class="s4">'Close_VIX'</span><span class="s0">] = df[</span><span class="s4">'Close_VIX'</span><span class="s0">].resample(</span><span class="s4">'W'</span><span class="s0">).mean()</span>
+<span class="s0">df_weekly[</span><span class="s4">'Close_DX_Y_NYB'</span><span class="s0">] = df[</span><span class="s4">'Close_DX_Y_NYB'</span><span class="s0">].resample(</span><span class="s4">'W'</span><span class="s0">).mean()</span>
+<span class="s0">df_weekly[</span><span class="s4">'wti_crude_oil_price'</span><span class="s0">] = df[</span><span class="s4">'wti_crude_oil_price'</span><span class="s0">].resample(</span><span class="s4">'W'</span><span class="s0">).mean()</span>
+
+<span class="s1"># 3. Create Weekly Lags</span>
+<span class="s0">df_weekly[</span><span class="s4">'gold_ret_lag'</span><span class="s0">] = df_weekly[</span><span class="s4">'gold_ret'</span><span class="s0">].shift(</span><span class="s6">1</span><span class="s0">)</span>
+<span class="s0">df_weekly[</span><span class="s4">'sp500_ret_lag'</span><span class="s0">] = df_weekly[</span><span class="s4">'sp500_ret'</span><span class="s0">].shift(</span><span class="s6">1</span><span class="s0">)</span>
+<span class="s0">df_weekly[</span><span class="s4">'Close_VIX_lag'</span><span class="s0">] = df_weekly[</span><span class="s4">'Close_VIX'</span><span class="s0">].shift(</span><span class="s6">1</span><span class="s0">)</span>
+
+<span class="s1"># Weekly Volatility (Standard Deviation of daily returns within that week)</span>
+<span class="s0">df_weekly[</span><span class="s4">'gold_vol_weekly'</span><span class="s0">] = df[</span><span class="s4">'gold_ret'</span><span class="s0">].resample(</span><span class="s4">'W'</span><span class="s0">).std()</span>
+
+<span class="s1"># Old World vs New World break</span>
+<span class="s0">df_weekly[</span><span class="s4">'is_PostCovid'</span><span class="s0">] = (df_weekly.index &gt;= </span><span class="s4">'2022-03-16'</span><span class="s0">).astype(int)</span>
+
+<span class="s1"># Drop any NaNs</span>
+<span class="s0">df_weekly.dropna(inplace=</span><span class="s3">True</span><span class="s0">)</span>
+
+<span class="s0">print(</span><span class="s4">f&quot;Weekly Data Row Count: </span><span class="s3">{</span><span class="s0">len(df_weekly)</span><span class="s3">}</span><span class="s4">&quot;</span><span class="s0">)</span>
+
+<span class="s0">df_weekly.to_csv(</span><span class="s4">'weekly_model_data.csv'</span><span class="s0">)</span>
+<span class="s0">df_weekly.head(</span><span class="s6">5</span><span class="s0">)</span><hr class="ls0"><span class="s0">#%% md 
+## Section 1: Variable Selection via LASSO Regression 
+ 
+We use a LASSO (Least Absolute Shrinkage and Selection Operator) model to determine which macroeconomic drivers actually provide predictive power for gold returns. Because daily financial data is notoriously &quot;noisy,&quot; the LASSO penalty helps us filter out insignificant variables. We use Time-Series Cross-Validation to ensure we aren't &quot;peeking&quot; into the future during the selection process. <hr class="ls0">#%% 
+</span><span class="s1"># defining the features list explicitly to avoid NameErrors</span>
+<span class="s0">features = [</span><span class="s4">'interest_rate'</span><span class="s5">, </span><span class="s4">'expected_inflation'</span><span class="s5">, </span><span class="s4">'wti_crude_oil_price'</span><span class="s5">,</span>
+    <span class="s4">'sp500_ret'</span><span class="s5">, </span><span class="s4">'sp500_ret_lag'</span><span class="s5">, </span><span class="s4">'Close_VIX'</span><span class="s5">, </span><span class="s4">'Close_DX_Y_NYB'</span><span class="s5">,</span>
+    <span class="s4">'gold_ret_lag'</span><span class="s5">, </span><span class="s4">'gold_vol_lag'</span><span class="s5">, </span><span class="s4">'Close_VIX_lag'</span><span class="s0">]</span>
+
+<span class="s1"># Split the data into Training (Pre-Break) and Testing (Post-Break)</span>
+<span class="s0">split_date = </span><span class="s4">'2022-03-16'</span>
+<span class="s0">train_df = df[df.index &lt; split_date].copy()</span>
+<span class="s0">test_df = df[df.index &gt;= split_date].copy()</span>
+
+<span class="s1"># checking the correlation between features and the target (Gold Returns) in our training data</span>
+<span class="s0">correlations = train_df[features + [</span><span class="s4">'gold_ret'</span><span class="s0">]].corr()[</span><span class="s4">'gold_ret'</span><span class="s0">].sort_values()</span>
+<span class="s0">print(</span><span class="s4">&quot;Correlations with Target:</span><span class="s3">\n</span><span class="s4">&quot;</span><span class="s5">, </span><span class="s0">correlations)</span>
+
+<span class="s1"># converting Log-Returns to percentages (multiplying by 100)</span>
+<span class="s1"># this increases model sensitivity to help prevent zeroed-out coefficients</span>
+<span class="s0">y_train = train_df[</span><span class="s4">'gold_ret'</span><span class="s0">] * </span><span class="s6">100</span>
+<span class="s0">X_train = train_df[features]</span>
+
+<span class="s1"># standardizing features to ensure Mean=0 and Std=1</span>
+<span class="s0">scaler = StandardScaler()</span>
+<span class="s0">X_train_scaled = scaler.fit_transform(X_train)</span>
+
+<span class="s1"># running LassoCV with an aggressive search path (eps=1e-8)</span>
+<span class="s1"># a lowered epsilon forces the model to search for even the weakest signals</span>
+<span class="s0">tscv = TimeSeriesSplit(n_splits=</span><span class="s6">5</span><span class="s0">)</span>
+<span class="s0">lasso = LassoCV(cv=tscv</span><span class="s5">, </span><span class="s0">random_state=</span><span class="s6">42</span><span class="s5">, </span><span class="s0">max_iter=</span><span class="s6">50000</span><span class="s5">, </span><span class="s0">n_alphas=</span><span class="s6">1000</span><span class="s5">, </span><span class="s0">eps=</span><span class="s6">1e-8</span><span class="s0">)</span>
+<span class="s0">lasso.fit(X_train_scaled</span><span class="s5">, </span><span class="s0">y_train)</span>
+
+<span class="s0">print(</span><span class="s4">f&quot;Optimal Penalty (Alpha): </span><span class="s3">{</span><span class="s0">lasso.alpha_</span><span class="s3">:</span><span class="s4">.6f</span><span class="s3">}</span><span class="s4">&quot;</span><span class="s0">)</span>
+
+<span class="s1"># identifying variables that survived the shrinkage</span>
+<span class="s0">coef_series = pd.Series(lasso.coef_</span><span class="s5">, </span><span class="s0">index=X_train.columns).sort_values(ascending=</span><span class="s3">False</span><span class="s0">)</span>
+<span class="s0">selected_features = coef_series[coef_series != </span><span class="s6">0</span><span class="s0">]</span><hr class="ls0"><span class="s0">#%% 
+</span>
+<span class="s1"># Use the same feature list</span>
+<span class="s0">features_weekly = [</span><span class="s4">'interest_rate'</span><span class="s5">, </span><span class="s4">'expected_inflation'</span><span class="s5">, </span><span class="s4">'wti_crude_oil_price'</span><span class="s5">,</span>
+                   <span class="s4">'sp500_ret'</span><span class="s5">, </span><span class="s4">'sp500_ret_lag'</span><span class="s5">, </span><span class="s4">'Close_VIX'</span><span class="s5">, </span><span class="s4">'Close_DX_Y_NYB'</span><span class="s5">,</span>
+                   <span class="s4">'gold_ret_lag'</span><span class="s5">, </span><span class="s4">'gold_vol_weekly'</span><span class="s5">, </span><span class="s4">'Close_VIX_lag'</span><span class="s0">]</span>
+
+<span class="s1"># Split the Weekly Data (Old vs New World)</span>
+<span class="s0">train_weekly = df_weekly[df_weekly.index &lt; </span><span class="s4">'2022-03-16'</span><span class="s0">].copy()</span>
+<span class="s0">test_weekly = df_weekly[df_weekly.index &gt;= </span><span class="s4">'2022-03-16'</span><span class="s0">].copy()</span>
+
+<span class="s1"># Splitting into outcome and regression variables</span>
+<span class="s0">y_train_w = train_weekly[</span><span class="s4">'gold_ret'</span><span class="s0">] * </span><span class="s6">100</span>
+<span class="s0">X_train_w = train_weekly[features_weekly]</span>
+
+<span class="s0">scaler_w = StandardScaler()</span>
+<span class="s0">X_train_scaled_w = scaler_w.fit_transform(X_train_w)</span>
+
+<span class="s1"># Run LassoCV</span>
+<span class="s0">tscv_w = TimeSeriesSplit(n_splits=</span><span class="s6">5</span><span class="s0">)</span>
+<span class="s0">lasso_w = LassoCV(cv=tscv_w</span><span class="s5">, </span><span class="s0">random_state=</span><span class="s6">42</span><span class="s5">, </span><span class="s0">max_iter=</span><span class="s6">50000</span><span class="s0">)</span>
+<span class="s0">lasso_w.fit(X_train_scaled_w</span><span class="s5">, </span><span class="s0">y_train_w)</span>
+
+<span class="s1"># Identify selected variables</span>
+<span class="s0">coef_w = pd.Series(lasso_w.coef_</span><span class="s5">, </span><span class="s0">index=X_train_w.columns)</span>
+<span class="s0">selected_w = coef_w[coef_w != </span><span class="s6">0</span><span class="s0">].sort_values(ascending=</span><span class="s3">False</span><span class="s0">)</span>
+
+<span class="s3">if not </span><span class="s0">selected_w.empty:</span>
+    <span class="s0">print(</span><span class="s4">&quot;Weekly LASSO SUCCESS! Selected variables:&quot;</span><span class="s0">)</span>
+    <span class="s0">print(selected_w)</span>
+<span class="s3">else</span><span class="s0">:</span>
+    <span class="s0">print(</span><span class="s4">&quot;Weekly LASSO still zeroed out.&quot;</span><span class="s0">)</span><hr class="ls0"><span class="s0">#%% md 
+## Section 2: Analysis of Results 
+ 
+If the LASSO model returns zero for all coefficients, it suggests that the daily &quot;noise&quot; of the market outweighs the &quot;signal&quot; of our macro variables; consistent with the Random Walk Theory. 
+ 
+Regardless of the LASSO's prediction preference, we will include the Interaction Term in the final OLS model to formally test our research hypothesis, based on raw correlation strengths. <hr class="ls0">#%% 
+</span><span class="s1"># final results</span>
+<span class="s3">if not </span><span class="s0">selected_features.empty:</span>
+    <span class="s0">plt.figure(figsize=(</span><span class="s6">10</span><span class="s5">, </span><span class="s6">6</span><span class="s0">))</span>
+    <span class="s0">selected_features.plot(kind=</span><span class="s4">'barh'</span><span class="s5">, </span><span class="s0">color=</span><span class="s4">'gold'</span><span class="s0">)</span>
+    <span class="s0">plt.axvline(x=</span><span class="s6">0</span><span class="s5">, </span><span class="s0">color=</span><span class="s4">'black'</span><span class="s5">, </span><span class="s0">linewidth=</span><span class="s6">0.8</span><span class="s0">)</span>
+    <span class="s0">plt.title(</span><span class="s4">&quot;LASSO Feature Selection: Drivers of Gold Returns&quot;</span><span class="s0">)</span>
+    <span class="s0">plt.xlabel(</span><span class="s4">&quot;Standardized Coefficient Value (Scaled x100)&quot;</span><span class="s0">)</span>
+    <span class="s0">plt.tight_layout()</span>
+    <span class="s0">plt.show()</span>
+
+    <span class="s0">handoff_list = selected_features.index.tolist()</span>
+    <span class="s0">print(</span><span class="s4">&quot;LASSO selected Variables for Member 4:&quot;</span><span class="s0">)</span>
+    <span class="s0">print(handoff_list)</span>
+<span class="s3">else</span><span class="s0">:</span>
+    <span class="s1"># fallback: if LASSO zeros out, we pick the top 3 based on absolute correlation</span>
+    <span class="s0">print(</span><span class="s4">&quot;Warning: LASSO zeroed out all Coefficients.&quot;</span><span class="s0">)</span>
+    <span class="s0">top_correlated = correlations.abs().sort_values(ascending=</span><span class="s3">False</span><span class="s0">)</span>
+    <span class="s0">handoff_list = top_correlated.index[</span><span class="s6">1</span><span class="s0">:</span><span class="s6">4</span><span class="s0">].tolist()</span>
+    <span class="s0">print(</span><span class="s4">&quot;Fallback: Recommended Variables for Member 4 based on Correlation:&quot;</span><span class="s0">)</span>
+    <span class="s0">print(handoff_list)</span>
+
+<span class="s1"># defining the final research features for the OLS Model</span>
+<span class="s1"># we use absolute values as strong negative correlation is equally important</span>
+<span class="s0">abs_corr = train_df[features + [</span><span class="s4">'gold_ret'</span><span class="s0">]].corr()[</span><span class="s4">'gold_ret'</span><span class="s0">].abs().sort_values(ascending=</span><span class="s3">False</span><span class="s0">)</span>
+<span class="s0">potential_drivers = abs_corr.drop(</span><span class="s4">'gold_ret'</span><span class="s0">)</span>
+
+<span class="s1"># selecting the top variables and forcing the interaction Term into the handoff</span>
+<span class="s0">handoff_vars = potential_drivers.head(</span><span class="s6">3</span><span class="s0">).index.tolist()</span>
+<span class="s3">if </span><span class="s4">'VIX_x_PostCovid' </span><span class="s3">not in </span><span class="s0">handoff_vars:</span>
+    <span class="s0">handoff_vars.append(</span><span class="s4">'VIX_x_PostCovid'</span><span class="s0">)</span>
+
+<span class="s0">print(</span><span class="s4">f&quot;</span><span class="s3">\n</span><span class="s4">Final Handoff for OLS: </span><span class="s3">{</span><span class="s0">handoff_vars</span><span class="s3">}</span><span class="s4">&quot;</span><span class="s0">)</span>
+
+<span class="s1"># visualizing why the LASSO struggled to select coefficients</span>
+<span class="s1"># plotting Gold Returns against the top correlated variable</span>
+<span class="s0">top_var = potential_drivers.index[</span><span class="s6">0</span><span class="s0">]</span>
+<span class="s0">plt.figure(figsize=(</span><span class="s6">10</span><span class="s5">, </span><span class="s6">6</span><span class="s0">))</span>
+<span class="s0">plt.scatter(df[top_var]</span><span class="s5">, </span><span class="s0">df[</span><span class="s4">'gold_ret'</span><span class="s0">] * </span><span class="s6">100</span><span class="s5">, </span><span class="s0">alpha=</span><span class="s6">0.3</span><span class="s5">, </span><span class="s0">color=</span><span class="s4">'gray'</span><span class="s0">)</span>
+<span class="s0">plt.axhline(</span><span class="s6">0</span><span class="s5">, </span><span class="s0">color=</span><span class="s4">'black'</span><span class="s5">, </span><span class="s0">lw=</span><span class="s6">1</span><span class="s0">)</span>
+<span class="s0">plt.title(</span><span class="s4">f&quot;Daily Gold Returns vs </span><span class="s3">{</span><span class="s0">top_var</span><span class="s3">}</span><span class="s4">&quot;</span><span class="s0">)</span>
+<span class="s0">plt.xlabel(</span><span class="s4">f&quot;</span><span class="s3">{</span><span class="s0">top_var</span><span class="s3">} </span><span class="s4">(Standardized)&quot;</span><span class="s0">)</span>
+<span class="s0">plt.ylabel(</span><span class="s4">&quot;Gold Log-Return (%)&quot;</span><span class="s0">)</span>
+<span class="s0">plt.show()</span><hr class="ls0"><span class="s0">#%% md 
+## Section 3: Evaluating and Testing the &quot;Broken Haven Hypothesis&quot; Using OLS 
+ 
+Given the variables handed off from the previous section, we now will predict, first using post-covid variables and compare to actual post-covid gold returns. 
+ 
+Since LASSO selected no variables we will also provide another OLS test for the Broken Haven theory by running a more theoretical model on the entire dataset and the interaction term 'VIX_x_PostCovid' to identify if Gold's relationship with the market breaks down after our split point. <hr class="ls0">#%% md 
+## Section 3.1.0: Old World vs New World Model 
+ 
+Using the Handoff Variables, we will train and evaluate a model using training data from before March 16th, 2022 (Old World) and predict and test the model on data after that point (New World) <hr class="ls0">#%% 
+</span><span class="s3">import </span><span class="s0">statsmodels.api </span><span class="s3">as </span><span class="s0">sm</span>
+<span class="s3">from </span><span class="s0">sklearn.metrics </span><span class="s3">import </span><span class="s0">mean_squared_error</span>
+<span class="s1">#Using fallback handoff variables to train OLS model</span>
+
+<span class="s1">#Remove interaction term for now</span>
+<span class="s0">fallback_vars = [v </span><span class="s3">for </span><span class="s0">v </span><span class="s3">in </span><span class="s0">handoff_vars </span><span class="s3">if </span><span class="s0">v != </span><span class="s4">'VIX_x_PostCovid'</span><span class="s0">]</span>
+
+<span class="s1">#Train Model using data from before 2022-03-16 (Old World) but on the handoff variables</span>
+<span class="s0">X_train_ols = sm.add_constant(train_df[fallback_vars])</span>
+<span class="s0">y_train_ols = train_df[</span><span class="s4">'gold_ret'</span><span class="s0">]</span>
+    <span class="s1"># cov_type = &quot;HC3&quot; to account to heteroscedasticity</span>
+<span class="s0">old_world_model = sm.OLS(y_train_ols</span><span class="s5">, </span><span class="s0">X_train_ols).fit(cov_type=</span><span class="s4">'HC3'</span><span class="s0">)</span>
+
+<span class="s1"># Predict the &quot;New World&quot; (Post-March 2022)</span>
+<span class="s0">X_test_ols = sm.add_constant(test_df[fallback_vars])</span>
+<span class="s0">test_df[</span><span class="s4">'pred_gold_ret'</span><span class="s0">] = old_world_model.predict(X_test_ols)</span>
+
+<span class="s1"># Comparing Model Performances for Old vs New World data</span>
+<span class="s0">train_rmse = np.sqrt(mean_squared_error(train_df[</span><span class="s4">'gold_ret'</span><span class="s0">]</span><span class="s5">, </span><span class="s0">old_world_model.predict(X_train_ols))) * </span><span class="s6">100</span>
+<span class="s0">test_rmse = np.sqrt(mean_squared_error(test_df[</span><span class="s4">'gold_ret'</span><span class="s0">]</span><span class="s5">, </span><span class="s0">test_df[</span><span class="s4">'pred_gold_ret'</span><span class="s0">])) * </span><span class="s6">100</span>
+
+<span class="s0">print(</span><span class="s4">f&quot;Old World Training RMSE: </span><span class="s3">{</span><span class="s0">train_rmse</span><span class="s3">:</span><span class="s4">.6f</span><span class="s3">}</span><span class="s4">%&quot;</span><span class="s0">)</span>
+<span class="s0">print(</span><span class="s4">f&quot;New World Prediction RMSE: </span><span class="s3">{</span><span class="s0">test_rmse</span><span class="s3">:</span><span class="s4">.6f</span><span class="s3">}</span><span class="s4">%&quot;</span><span class="s0">)</span>
+<span class="s0">print(</span><span class="s4">f&quot;Old World Gold Return Standard Deviation: </span><span class="s3">{</span><span class="s0">train_df[</span><span class="s4">'gold_ret'</span><span class="s0">].std()*</span><span class="s6">100</span><span class="s3">:</span><span class="s4">.6f</span><span class="s3">}</span><span class="s4">%&quot;</span><span class="s0">)</span>
+<span class="s0">print(</span><span class="s4">f&quot;New Wolrd Gold Return Standard Deviation: </span><span class="s3">{</span><span class="s0">test_df[</span><span class="s4">'gold_ret'</span><span class="s0">].std()*</span><span class="s6">100</span><span class="s3">:</span><span class="s4">.6f</span><span class="s3">}</span><span class="s4">%&quot;</span><span class="s0">)</span>
+
+<span class="s0">print(</span><span class="s4">&quot;</span><span class="s3">\n</span><span class="s4">--- OLS Regression Summary: The 'Old World' Rules ---&quot;</span><span class="s0">)</span>
+<span class="s0">print(old_world_model.summary())</span>
+<hr class="ls0"><span class="s0">#%% md 
+### Section 3.1.1: Analysis of result (Old vs New World Model) 
+ 
+Although the RMSE decreased quite drastically (4.35% to 0.96%), looking at the summary statistics associated with model we see an R-Squared score of close to 0 as well as a prob(F-stat) of 0.459. We also see that the Standard Deviations so Gold Returns for the old and new world are almost exactly the RMSEs implying further that most of the variation in Gold Returns can be explained by random noise. 
+ 
+The mains takeaways from these findings are 1) Gold returns in the New World experience less volatility and 2) Gold Prices following a Random Walk seems like a reasonable scenario at least for the variables we've analyzed. <hr class="ls0">#%% md 
+ ## Section 3.2.0: Interaction Analysis 
+ 
+Since our Old World vs New World has close to zero explanatory power, we will use an interaction between our cutoff date and the VIX closing price with our entire dataset to attempt to find validity in the Broken Haven hypothesis. 
+ <hr class="ls0">#%% 
+</span><span class="s1">#include interaction terms into the handoff variable list</span>
+<span class="s0">int_vars = handoff_vars + [</span><span class="s4">'Close_VIX'</span><span class="s5">, </span><span class="s4">'is_PostCovid'</span><span class="s0">]</span>
+
+<span class="s1">#No longer splitting into training and testing data</span>
+<span class="s0">X_int = sm.add_constant(df[int_vars])</span>
+<span class="s0">y_int = df[</span><span class="s4">'gold_ret'</span><span class="s0">]</span>
+
+<span class="s0">interaction_model = sm.OLS(y_int</span><span class="s5">, </span><span class="s0">X_int).fit(cov_type=</span><span class="s4">'HC3'</span><span class="s0">)</span>
+
+<span class="s0">print(</span><span class="s4">&quot;</span><span class="s3">\n</span><span class="s4">--- Phase 2: Full Dataset Interaction Model Results ---&quot;</span><span class="s0">)</span>
+<span class="s0">print(interaction_model.summary())</span><hr class="ls0"><span class="s0">#%% md 
+### Section 3.2.1: Analysis of Results (Interaction Model) 
+ 
+Once again we find that the model fits our data quite poorly with a R-Squared close to 0 and a low F-stat. We do see that post-covid &quot;flips&quot; the sign of the relationship between VIX closing price relative to the old world correlation however, neither effects are significant. 
+ <hr class="ls0">#%% md 
+## Section 3.3: Analysis of Weekly Results 
+ 
+Overall, we see that for our linear models, moving to a weekly frequency yields more or less similar results to our daily model. The Weekly OLS and Lasso Variable Selection both produced R-Squared values close to 0, with p-values for major macro-drivers remaining insignificant. This suggests that a linear framework still perceives weekly gold returns as mostly random noise, failing to identify the underlying factors. <hr class="ls0">#%% 
+	</span>
+<span class="s1"># Use the Fallback Variables (Top 3 Correlations) + Interaction Term</span>
+<span class="s1"># We use fallback because LASSO shrunk every variable</span>
+<span class="s0">fallback_vars_w = [v </span><span class="s3">for </span><span class="s0">v </span><span class="s3">in </span><span class="s0">handoff_vars </span><span class="s3">if </span><span class="s0">v != </span><span class="s4">'VIX_x_PostCovid'</span><span class="s0">]</span>
+<span class="s0">X_ols_w = sm.add_constant(df_weekly[fallback_vars_w + [</span><span class="s4">'Close_VIX'</span><span class="s5">, </span><span class="s4">'is_PostCovid'</span><span class="s0">]])</span>
+
+<span class="s1"># Add the Interaction Term</span>
+<span class="s0">df_weekly[</span><span class="s4">'VIX_x_PostCovid'</span><span class="s0">] = df_weekly[</span><span class="s4">'Close_VIX'</span><span class="s0">] * df_weekly[</span><span class="s4">'is_PostCovid'</span><span class="s0">]</span>
+<span class="s0">X_ols_w = sm.add_constant(df_weekly[fallback_vars_w + [</span><span class="s4">'Close_VIX'</span><span class="s5">, </span><span class="s4">'is_PostCovid'</span><span class="s5">, </span><span class="s4">'VIX_x_PostCovid'</span><span class="s0">]])</span>
+
+<span class="s0">y_ols_w = df_weekly[</span><span class="s4">'gold_ret'</span><span class="s0">]</span>
+
+<span class="s1"># 3. Fit the model</span>
+<span class="s0">weekly_interaction_model = sm.OLS(y_ols_w</span><span class="s5">, </span><span class="s0">X_ols_w).fit(cov_type=</span><span class="s4">'HC3'</span><span class="s0">)</span>
+
+<span class="s0">print(</span><span class="s4">&quot;</span><span class="s3">\n</span><span class="s4">--- Phase 3: Weekly Interaction Model Results ---&quot;</span><span class="s0">)</span>
+<span class="s0">print(weekly_interaction_model.summary())</span><hr class="ls0"><span class="s0">#%% md 
+# Section 4: Testing a Non-linear Machine Learning Model (XGBoost) 
+ 
+Since our linear models seem to exhibit very little explanatory power, perhaps non-linear models can perform better. Existing research has shown that XGBoost has shown high accuracy and promise for predicting fluctuations in gold prices (Cohen &amp; Aiche, 2023). 
+ 
+Extreme Gradient Boosting (XGBoost) models are Machine Learning algorithms that utilize decision trees, similar to random forest models. It differs in that the &quot;branches&quot; are built sequentially rather than simultaneously which means it can build on or &quot;boost&quot; previous iterations of the models leading to higher accuracy. <hr class="ls0">#%% md 
+## Section 4.1.0: XGBoost Model using Daily Data <hr class="ls0">#%% 
+</span><span class="s3">import </span><span class="s0">sys</span>
+<span class="s2">!</span><span class="s0">{sys.executable} -m pip install xgboost</span>
+<span class="s3">from </span><span class="s0">xgboost </span><span class="s3">import </span><span class="s0">XGBRegressor</span>
+<span class="s3">from </span><span class="s0">sklearn.metrics </span><span class="s3">import </span><span class="s0">mean_squared_error</span>
+
+<span class="s1"># Training: Using the training data already created in Section 2</span>
+<span class="s1"># We use max_depth=3 to keep it simple and prevent overfitting on daily noise</span>
+<span class="s0">xgb_model = XGBRegressor(n_estimators=</span><span class="s6">100</span><span class="s5">, </span><span class="s0">learning_rate=</span><span class="s6">0.05</span><span class="s5">, </span><span class="s0">max_depth=</span><span class="s6">3</span><span class="s5">, </span><span class="s0">random_state=</span><span class="s6">42</span><span class="s0">)</span>
+<span class="s0">xgb_model.fit(X_train</span><span class="s5">, </span><span class="s0">y_train)</span>
+
+<span class="s1"># Predict the 'New World' (Post-March 2022)</span>
+<span class="s1"># Re-using the 'features' list and 'scaler' from Section 2</span>
+<span class="s0">X_test = test_df[features]</span>
+<span class="s0">X_test_scaled = scaler.transform(X_test)</span>
+<span class="s0">test_df[</span><span class="s4">'pred_gold_ret_xgb'</span><span class="s0">] = xgb_model.predict(X_test_scaled)</span>
+
+<span class="s1"># Calculate Errors</span>
+<span class="s1"># CRITICAL: We must scale y_test by 100 to match y_train in Section 2</span>
+<span class="s0">y_test_scaled = test_df[</span><span class="s4">'gold_ret'</span><span class="s0">] * </span><span class="s6">100</span>
+<span class="s0">train_preds_xgb = xgb_model.predict(X_train_scaled)</span>
+
+<span class="s0">train_xgrmse = np.sqrt(mean_squared_error(y_train</span><span class="s5">, </span><span class="s0">train_preds_xgb))</span>
+<span class="s0">test_xgrmse = np.sqrt(mean_squared_error(y_test_scaled</span><span class="s5">, </span><span class="s0">test_df[</span><span class="s4">'pred_gold_ret_xgb'</span><span class="s0">]))</span>
+
+<span class="s1"># Market Volatility for Comparison (Standard Deviation of weekly returns)</span>
+<span class="s0">vol_train = y_train.std()</span>
+<span class="s0">vol_test = y_test_scaled.std()</span>
+
+<span class="s0">print(</span><span class="s4">f&quot;XGBoost Training RMSE: </span><span class="s3">{</span><span class="s0">train_xgrmse</span><span class="s3">:</span><span class="s4">.6f</span><span class="s3">}</span><span class="s4">% (Market Vol: </span><span class="s3">{</span><span class="s0">vol_train</span><span class="s3">:</span><span class="s4">.2f</span><span class="s3">}</span><span class="s4">%)&quot;</span><span class="s0">)</span>
+<span class="s0">print(</span><span class="s4">f&quot;XGBoost Testing RMSE: </span><span class="s3">{</span><span class="s0">test_xgrmse</span><span class="s3">:</span><span class="s4">.6f</span><span class="s3">}</span><span class="s4">% (Market Vol: </span><span class="s3">{</span><span class="s0">vol_test</span><span class="s3">:</span><span class="s4">.2f</span><span class="s3">}</span><span class="s4">%)&quot;</span><span class="s0">)</span>
+
+<span class="s0">print(</span><span class="s4">f&quot;OLS Training RMSE: </span><span class="s3">{</span><span class="s0">train_rmse</span><span class="s3">:</span><span class="s4">.6f</span><span class="s3">}</span><span class="s4">%&quot;</span><span class="s0">)</span>
+<span class="s0">print(</span><span class="s4">f&quot;OLS Testing RMSE: </span><span class="s3">{</span><span class="s0">test_rmse</span><span class="s3">:</span><span class="s4">.6f</span><span class="s3">}</span><span class="s4">%&quot;</span><span class="s0">)</span>
+
+<span class="s1"># Feature Importance (The &quot;Econometrician&quot; Insight)</span>
+<span class="s1"># This shows what the AI thought was important BEFORE the haven broke</span>
+<span class="s0">importance = pd.Series(xgb_model.feature_importances_</span><span class="s5">, </span><span class="s0">index=features).sort_values(ascending=</span><span class="s3">False</span><span class="s0">)</span>
+<span class="s0">print(</span><span class="s4">&quot;</span><span class="s3">\n</span><span class="s4">XGBoost Feature Importance (based on pre-covid training data):&quot;</span><span class="s0">)</span>
+<span class="s0">print(importance)</span><hr class="ls0"><span class="s0">#%% 
+</span><span class="s3">from </span><span class="s0">sklearn.metrics </span><span class="s3">import </span><span class="s0">r2_score</span>
+
+<span class="s1">#Calculate R-Squared</span>
+<span class="s0">r2_train = r2_score(y_train</span><span class="s5">, </span><span class="s0">train_preds_xgb)</span>
+<span class="s0">r2_test = r2_score(y_test_scaled</span><span class="s5">, </span><span class="s0">test_df[</span><span class="s4">'pred_gold_ret_xgb'</span><span class="s0">])</span>
+<span class="s0">print(</span><span class="s4">f&quot;Daily XGBoost R-Squared (Train): </span><span class="s3">{</span><span class="s0">r2_train</span><span class="s3">:</span><span class="s4">.4f</span><span class="s3">}</span><span class="s4">&quot;</span><span class="s0">)</span>
+<span class="s0">print(</span><span class="s4">f&quot;Daily XGBoost R-Squared (Test):  </span><span class="s3">{</span><span class="s0">r2_test</span><span class="s3">:</span><span class="s4">.4f</span><span class="s3">}</span><span class="s4">&quot;</span><span class="s0">)</span><hr class="ls0"><span class="s0">#%% md 
+## Section 4.1.1: Analysis of Daily Results 
+ 
+Using a more sophisticated algorthm like XGBoost, we're able to retrieve variables the algorithm deemed most important for predicting gold returns. 53% of the model's predictive logic can be represented by the lagged return of the S&amp;P 500 which is consistent with findings from Cohen and Aiche (2023) and 35% was driven by the rolling standard deviation of gold returns over the past five trading days. 
+ 
+An interesting observation with the XGBoost model however, is that although the training RMSE follows closely the volatility of gold returns like the OLS model, the testing RMSE is actually higher than the market volatility. This implies that post March 2022, our model actual performs worse than random noise signaling a potential shift in the behaviour of gold returns. 
+ 
+Overall, at the daily level, even XGBoost models still exhibit negative R-Squared values implying low explanatory power which is most likely still dominated by random noise. <hr class="ls0">#%% md 
+## Section 4.2.0: XGBoost Model using Weekly Data <hr class="ls0">#%% 
+</span><span class="s1">#XGBoost Model</span>
+<span class="s0">features_w = [</span><span class="s4">'interest_rate'</span><span class="s5">, </span><span class="s4">'expected_inflation'</span><span class="s5">, </span><span class="s4">'wti_crude_oil_price'</span><span class="s5">,</span>
+              <span class="s4">'sp500_ret'</span><span class="s5">, </span><span class="s4">'sp500_ret_lag'</span><span class="s5">, </span><span class="s4">'Close_VIX'</span><span class="s5">, </span><span class="s4">'Close_DX_Y_NYB'</span><span class="s5">,</span>
+              <span class="s4">'gold_ret_lag'</span><span class="s5">, </span><span class="s4">'gold_vol_weekly'</span><span class="s5">, </span><span class="s4">'Close_VIX_lag'</span><span class="s0">]</span>
+
+<span class="s1"># Split the Weekly Data (Pre/Post March 2022)</span>
+<span class="s0">train_w = df_weekly[df_weekly.index &lt; </span><span class="s4">'2022-03-16'</span><span class="s0">].copy()</span>
+<span class="s0">test_w = df_weekly[df_weekly.index &gt;= </span><span class="s4">'2022-03-16'</span><span class="s0">].copy()</span>
+
+<span class="s1"># Prepare X and y (Scaling returns by 100 for sensitivity)</span>
+<span class="s0">X_train_w = train_w[features_w]</span>
+<span class="s0">y_train_w = train_w[</span><span class="s4">'gold_ret'</span><span class="s0">] * </span><span class="s6">100</span>
+
+<span class="s0">X_test_w = test_w[features_w]</span>
+<span class="s0">y_test_w = test_w[</span><span class="s4">'gold_ret'</span><span class="s0">] * </span><span class="s6">100</span>
+
+<span class="s1"># Standardize Weekly Features</span>
+<span class="s0">scaler_w = StandardScaler()</span>
+<span class="s0">X_train_scaled_w = scaler_w.fit_transform(X_train_w)</span>
+<span class="s0">X_test_scaled_w = scaler_w.transform(X_test_w)</span>
+
+<span class="s1"># Train XGBoost</span>
+<span class="s1"># We keep max_depth=3 to prevent the model from &quot;hallucinating&quot; patterns in the smaller weekly sample</span>
+<span class="s0">xgb_weekly = XGBRegressor(n_estimators=</span><span class="s6">100</span><span class="s5">, </span><span class="s0">learning_rate=</span><span class="s6">0.05</span><span class="s5">, </span><span class="s0">max_depth=</span><span class="s6">3</span><span class="s5">, </span><span class="s0">random_state=</span><span class="s6">42</span><span class="s0">)</span>
+<span class="s0">xgb_weekly.fit(X_train_scaled_w</span><span class="s5">, </span><span class="s0">y_train_w)</span>
+
+<span class="s1"># Predict and Evaluate</span>
+<span class="s0">train_preds_w = xgb_weekly.predict(X_train_scaled_w)</span>
+<span class="s0">test_preds_w = xgb_weekly.predict(X_test_scaled_w)</span>
+
+<span class="s0">train_xgrmse_w = np.sqrt(mean_squared_error(y_train_w</span><span class="s5">, </span><span class="s0">train_preds_w))</span>
+<span class="s0">test_xgrmse_w = np.sqrt(mean_squared_error(y_test_w</span><span class="s5">, </span><span class="s0">test_preds_w))</span>
+
+<span class="s1"># Market Volatility for Comparison (Standard Deviation of weekly returns)</span>
+<span class="s0">vol_train_w = y_train_w.std()</span>
+<span class="s0">vol_test_w = y_test_w.std()</span>
+
+<span class="s0">print(</span><span class="s4">f&quot;Weekly XGBoost Training RMSE: </span><span class="s3">{</span><span class="s0">train_xgrmse_w</span><span class="s3">:</span><span class="s4">.6f</span><span class="s3">}</span><span class="s4">% (Market Vol: </span><span class="s3">{</span><span class="s0">vol_train_w</span><span class="s3">:</span><span class="s4">.2f</span><span class="s3">}</span><span class="s4">%)&quot;</span><span class="s0">)</span>
+<span class="s0">print(</span><span class="s4">f&quot;Weekly XGBoost Testing RMSE:  </span><span class="s3">{</span><span class="s0">test_xgrmse_w</span><span class="s3">:</span><span class="s4">.6f</span><span class="s3">}</span><span class="s4">% (Market Vol: </span><span class="s3">{</span><span class="s0">vol_test_w</span><span class="s3">:</span><span class="s4">.2f</span><span class="s3">}</span><span class="s4">%)&quot;</span><span class="s0">)</span>
+
+<span class="s1"># Feature Importance</span>
+<span class="s0">importance_w = pd.Series(xgb_weekly.feature_importances_</span><span class="s5">, </span><span class="s0">index=features_w).sort_values(ascending=</span><span class="s3">False</span><span class="s0">)</span>
+<span class="s0">print(</span><span class="s4">&quot;</span><span class="s3">\n</span><span class="s4">Weekly XGBoost Feature Importance:&quot;</span><span class="s0">)</span>
+<span class="s0">print(importance_w)</span><hr class="ls0"><span class="s0">#%% 
+</span><span class="s3">from </span><span class="s0">sklearn.metrics </span><span class="s3">import </span><span class="s0">r2_score</span>
+
+<span class="s1">#Calculate R-Squared</span>
+<span class="s0">r2_train_w = r2_score(y_train_w</span><span class="s5">, </span><span class="s0">train_preds_w)</span>
+<span class="s0">r2_test_w = r2_score(y_test_w</span><span class="s5">, </span><span class="s0">test_preds_w)</span>
+
+
+<span class="s0">print(</span><span class="s4">f&quot;Weekly XGBoost R-Squared (Train): </span><span class="s3">{</span><span class="s0">r2_train_w</span><span class="s3">:</span><span class="s4">.4f</span><span class="s3">}</span><span class="s4">&quot;</span><span class="s0">)</span>
+<span class="s0">print(</span><span class="s4">f&quot;Weekly XGBoost R-Squared (Test):  </span><span class="s3">{</span><span class="s0">r2_test_w</span><span class="s3">:</span><span class="s4">.4f</span><span class="s3">}</span><span class="s4">&quot;</span><span class="s0">)</span><hr class="ls0"><span class="s0">#%% md 
+## Section 4.2.1: Analysis of Weekly XGBoost Results 
+ 
+Our XGBoost model, when trained on weekly data, yields a breakthrough. By accounting for non-linear interactions, it achieves a Training R-Squared of 0.96 and a Training RMSE well below market volatility. The OLS vs. XGBoost results is a key finding: it proves that while the &quot;Old World&quot; rules existed, they were non-linear, requiring more sophisticated modeling to uncover. 
+ 
+In this weekly version, our driving variables have also shifted. Crude oil prices emerged as the primary driver (57% of importance), followed by gold return volatility from the previous week. This suggests that before 2022, gold traded less as a &quot;financial&quot; asset and more as a &quot;geopolitical/energy&quot; proxy. 
+ 
+Most importantly, both the R-squared and RMSE values worsen significantly once the model is used to predict &quot;New World&quot; era gold returns (Test R-Squared: -0.0137). This is the strong evidence for the &quot;Broken Haven&quot; hypothesis. The failure of even a high-performing XGBoost model to generalize to the post-March 2022 period confirms that the old rules have been replaced by a new, unobserved factors. 
+ <hr class="ls0">#%% md 
+# **5. DATA VISUALIZATION** 
+ 
+This notebook focuses on exploratory data analysis (EDA) and visualization for the Broken Haven project. <hr class="ls0">#%% md 
+## Section：5.1 Load and Inspect Data <hr class="ls0">#%% 
+</span><span class="s3">import </span><span class="s0">pandas </span><span class="s3">as </span><span class="s0">pd</span>
+<span class="s3">import </span><span class="s0">numpy </span><span class="s3">as </span><span class="s0">np</span>
+<span class="s3">import </span><span class="s0">matplotlib.pyplot </span><span class="s3">as </span><span class="s0">plt</span><hr class="ls0"><span class="s0">#%% md 
+Data Check： 
+The cleaned dataset was loaded and sorted by date before visualization. <hr class="ls0">#%% 
+df = pd.read_csv(</span><span class="s4">&quot;final_model_data.csv&quot;</span><span class="s0">)</span>
+<span class="s0">df[</span><span class="s4">&quot;DATE&quot;</span><span class="s0">] = pd.to_datetime(df[</span><span class="s4">&quot;DATE&quot;</span><span class="s0">])</span>
+<span class="s0">df = df.sort_values(</span><span class="s4">&quot;DATE&quot;</span><span class="s0">).reset_index(drop=</span><span class="s3">True</span><span class="s0">)</span>
+
+<span class="s0">print(</span><span class="s4">&quot;Date range:&quot;</span><span class="s5">, </span><span class="s0">df[</span><span class="s4">&quot;DATE&quot;</span><span class="s0">].min()</span><span class="s5">, </span><span class="s4">&quot;to&quot;</span><span class="s5">, </span><span class="s0">df[</span><span class="s4">&quot;DATE&quot;</span><span class="s0">].max())</span>
+<span class="s0">print(</span><span class="s4">&quot;Number of observations:&quot;</span><span class="s5">, </span><span class="s0">len(df))</span><hr class="ls0"><span class="s0">#%% 
+df[</span><span class="s4">&quot;Period&quot;</span><span class="s0">] = np.where(df[</span><span class="s4">&quot;is_PostCovid&quot;</span><span class="s0">] == </span><span class="s6">1</span><span class="s5">, </span><span class="s4">&quot;Post-COVID&quot;</span><span class="s5">, </span><span class="s4">&quot;Pre-2022&quot;</span><span class="s0">)</span>
+<span class="s0">df[[</span><span class="s4">&quot;DATE&quot;</span><span class="s5">, </span><span class="s4">&quot;is_PostCovid&quot;</span><span class="s5">, </span><span class="s4">&quot;Period&quot;</span><span class="s0">]].head()</span><hr class="ls0"><span class="s0">#%% md 
+## Section：5.2 Time-Series Visualizations <hr class="ls0">#%% md 
+The modelling file defines the post-COVID period using the dummy variable `is_PostCovid`, which equals 1 from January 1, 2022 onward. 
+ 
+This section first creates readable period labels and then visualizes key variables over time. <hr class="ls0">#%% 
+df[</span><span class="s4">&quot;Period&quot;</span><span class="s0">] = np.where(df[</span><span class="s4">&quot;is_PostCovid&quot;</span><span class="s0">] == </span><span class="s6">1</span><span class="s5">, </span><span class="s4">&quot;Post-COVID&quot;</span><span class="s5">, </span><span class="s4">&quot;Pre-2022&quot;</span><span class="s0">)</span>
+<span class="s0">df[[</span><span class="s4">&quot;DATE&quot;</span><span class="s5">, </span><span class="s4">&quot;is_PostCovid&quot;</span><span class="s5">, </span><span class="s4">&quot;Period&quot;</span><span class="s0">]].head()</span><hr class="ls0"><span class="s0">#%% 
+split_date = pd.Timestamp(</span><span class="s4">&quot;2022-03-16&quot;</span><span class="s0">)</span>
+
+<span class="s0">plt.figure(figsize=(</span><span class="s6">12</span><span class="s5">,</span><span class="s6">6</span><span class="s0">))</span>
+<span class="s0">plt.plot(df[</span><span class="s4">&quot;DATE&quot;</span><span class="s0">]</span><span class="s5">, </span><span class="s0">df[</span><span class="s4">&quot;Close_MGC_F&quot;</span><span class="s0">]</span><span class="s5">, </span><span class="s0">color=</span><span class="s4">&quot;goldenrod&quot;</span><span class="s5">, </span><span class="s0">linewidth=</span><span class="s6">1.8</span><span class="s5">, </span><span class="s0">label=</span><span class="s4">&quot;Gold Price&quot;</span><span class="s0">)</span>
+<span class="s0">plt.axvline(split_date</span><span class="s5">, </span><span class="s0">color=</span><span class="s4">&quot;red&quot;</span><span class="s5">, </span><span class="s0">linestyle=</span><span class="s4">&quot;--&quot;</span><span class="s5">, </span><span class="s0">linewidth=</span><span class="s6">1.5</span><span class="s5">, </span><span class="s0">label=</span><span class="s4">&quot;Break Date: 2022-03-16&quot;</span><span class="s0">)</span>
+
+<span class="s0">plt.title(</span><span class="s4">&quot;Gold Price Over Time&quot;</span><span class="s0">)</span>
+<span class="s0">plt.xlabel(</span><span class="s4">&quot;Date&quot;</span><span class="s0">)</span>
+<span class="s0">plt.ylabel(</span><span class="s4">&quot;Gold Price (USD per ounce)&quot;</span><span class="s0">)</span>
+<span class="s0">plt.legend()</span>
+<span class="s0">plt.grid(alpha=</span><span class="s6">0.3</span><span class="s0">)</span>
+
+<span class="s0">plt.show()</span><hr class="ls0"><span class="s0">#%% md 
+### Interpretation 
+ 
+This figure shows how gold prices moved over time, with March 16, 2022 marked as the structural break date. Gold prices continue to fluctuate before and after the break, which suggests that market conditions may have changed across the two periods. This provides background for testing whether gold behaved differently after the break. <hr class="ls0">#%% 
+split_date = pd.Timestamp(</span><span class="s4">&quot;2022-03-16&quot;</span><span class="s0">)</span>
+
+<span class="s0">plt.figure(figsize=(</span><span class="s6">12</span><span class="s5">,</span><span class="s6">6</span><span class="s0">))</span>
+<span class="s0">plt.plot(df[</span><span class="s4">&quot;DATE&quot;</span><span class="s0">]</span><span class="s5">, </span><span class="s0">df[</span><span class="s4">&quot;Close_VIX&quot;</span><span class="s0">]</span><span class="s5">, </span><span class="s0">color=</span><span class="s4">&quot;darkblue&quot;</span><span class="s5">, </span><span class="s0">linewidth=</span><span class="s6">1.8</span><span class="s5">, </span><span class="s0">label=</span><span class="s4">&quot;VIX&quot;</span><span class="s0">)</span>
+<span class="s0">plt.axvline(split_date</span><span class="s5">, </span><span class="s0">color=</span><span class="s4">&quot;red&quot;</span><span class="s5">, </span><span class="s0">linestyle=</span><span class="s4">&quot;--&quot;</span><span class="s5">, </span><span class="s0">linewidth=</span><span class="s6">1.5</span><span class="s5">, </span><span class="s0">label=</span><span class="s4">&quot;Break Date: 2022-03-16&quot;</span><span class="s0">)</span>
+
+<span class="s0">plt.title(</span><span class="s4">&quot;VIX Over Time&quot;</span><span class="s0">)</span>
+<span class="s0">plt.xlabel(</span><span class="s4">&quot;Date&quot;</span><span class="s0">)</span>
+<span class="s0">plt.ylabel(</span><span class="s4">&quot;VIX Index Level&quot;</span><span class="s0">)</span>
+<span class="s0">plt.legend()</span>
+<span class="s0">plt.grid(alpha=</span><span class="s6">0.3</span><span class="s0">)</span>
+
+<span class="s0">y_max = df[</span><span class="s4">&quot;Close_VIX&quot;</span><span class="s0">].max()</span>
+<span class="s0">plt.text(split_date</span><span class="s5">, </span><span class="s0">y_max * </span><span class="s6">0.95</span><span class="s5">, </span><span class="s4">&quot;  Break Date&quot;</span><span class="s5">, </span><span class="s0">color=</span><span class="s4">&quot;red&quot;</span><span class="s5">, </span><span class="s0">va=</span><span class="s4">&quot;top&quot;</span><span class="s0">)</span>
+
+<span class="s0">plt.show()</span><hr class="ls0"><span class="s0">#%% md 
+The VIX measures market stress and uncertainty. Since the project tests whether gold retained its safe-haven role, this is one of the most important explanatory variables. <hr class="ls0">#%% md 
+## Section：5.3 Connecting Gold Prices and Market Stress <hr class="ls0">#%% 
+split_date = pd.Timestamp(</span><span class="s4">&quot;2022-03-16&quot;</span><span class="s0">)</span>
+<span class="s0">df[</span><span class="s4">&quot;Period&quot;</span><span class="s0">] = np.where(df[</span><span class="s4">&quot;DATE&quot;</span><span class="s0">] &gt;= split_date</span><span class="s5">, </span><span class="s4">&quot;Post-Break&quot;</span><span class="s5">, </span><span class="s4">&quot;Pre-Break&quot;</span><span class="s0">)</span>
+
+<span class="s0">plot_df = df[[</span><span class="s4">&quot;Close_VIX&quot;</span><span class="s5">, </span><span class="s4">&quot;Close_MGC_F&quot;</span><span class="s5">, </span><span class="s4">&quot;Period&quot;</span><span class="s0">]].dropna().copy()</span>
+<span class="s0">plot_df[</span><span class="s4">&quot;VIX_bin&quot;</span><span class="s0">] = pd.qcut(plot_df[</span><span class="s4">&quot;Close_VIX&quot;</span><span class="s0">]</span><span class="s5">, </span><span class="s0">q=</span><span class="s6">8</span><span class="s5">, </span><span class="s0">duplicates=</span><span class="s4">&quot;drop&quot;</span><span class="s0">)</span>
+
+<span class="s0">grouped = plot_df.groupby([</span><span class="s4">&quot;Period&quot;</span><span class="s5">, </span><span class="s4">&quot;VIX_bin&quot;</span><span class="s0">]</span><span class="s5">, </span><span class="s0">observed=</span><span class="s3">False</span><span class="s0">)[</span><span class="s4">&quot;Close_MGC_F&quot;</span><span class="s0">].mean().reset_index()</span>
+<span class="s0">grouped[</span><span class="s4">&quot;VIX_mid&quot;</span><span class="s0">] = grouped[</span><span class="s4">&quot;VIX_bin&quot;</span><span class="s0">].apply(</span><span class="s3">lambda </span><span class="s0">x: x.mid)</span>
+
+<span class="s0">plt.figure(figsize=(</span><span class="s6">8</span><span class="s5">,</span><span class="s6">6</span><span class="s0">))</span>
+
+<span class="s3">for </span><span class="s0">period</span><span class="s5">, </span><span class="s0">color </span><span class="s3">in </span><span class="s0">[(</span><span class="s4">&quot;Pre-Break&quot;</span><span class="s5">, </span><span class="s4">&quot;darkblue&quot;</span><span class="s0">)</span><span class="s5">, </span><span class="s0">(</span><span class="s4">&quot;Post-Break&quot;</span><span class="s5">, </span><span class="s4">&quot;darkorange&quot;</span><span class="s0">)]:</span>
+    <span class="s0">subset = grouped[grouped[</span><span class="s4">&quot;Period&quot;</span><span class="s0">] == period]</span>
+    <span class="s0">plt.plot(</span>
+        <span class="s0">subset[</span><span class="s4">&quot;VIX_mid&quot;</span><span class="s0">]</span><span class="s5">,</span>
+        <span class="s0">subset[</span><span class="s4">&quot;Close_MGC_F&quot;</span><span class="s0">]</span><span class="s5">,</span>
+        <span class="s0">marker=</span><span class="s4">&quot;o&quot;</span><span class="s5">,</span>
+        <span class="s0">linewidth=</span><span class="s6">2</span><span class="s5">,</span>
+        <span class="s0">color=color</span><span class="s5">,</span>
+        <span class="s0">label=period</span>
+    <span class="s0">)</span>
+
+<span class="s0">plt.title(</span><span class="s4">&quot;Average Gold Price by VIX Level&quot;</span><span class="s0">)</span>
+<span class="s0">plt.xlabel(</span><span class="s4">&quot;VIX Index Level&quot;</span><span class="s0">)</span>
+<span class="s0">plt.ylabel(</span><span class="s4">&quot;Average Gold Price (USD per ounce)&quot;</span><span class="s0">)</span>
+<span class="s0">plt.legend()</span>
+<span class="s0">plt.grid(alpha=</span><span class="s6">0.3</span><span class="s0">)</span>
+<span class="s0">plt.show()</span><hr class="ls0"><span class="s0">#%% md 
+### Interpretation 
+ 
+After examining gold prices and VIX separately over time, the next step is to look at how they are related. This figure compares average gold prices across different levels of market stress before and after the structural break on March 16, 2022. 
+ 
+If gold responded to market stress in the same way across both periods, the two lines would show a similar pattern. If the pattern differs after the break, this suggests that the relationship between gold and market stress may have become less stable. <hr class="ls0">#%% md 
+## Section 6 Model Results Summary <hr class="ls0">#%% md 
+### 6.1 Lasso Feature Selection Summary 
+ 
+The modelling stage first applied Lasso regression to the candidate predictors in order to reduce multicollinearity and identify the most relevant variables for explaining daily gold returns. 
+ 
+However, under the current specification, the Lasso penalty shrank all coefficients to zero. This suggests that none of the candidate variables showed strong enough predictive power to remain in the model after regularization. 
+ 
+Because of this result, the analysis proceeded with a fallback variable set based on correlation patterns and modelling judgment. The variables passed to the OLS stage were: 
+ 
+- `Close_DX_Y_NYB` 
+- `wti_crude_oil_price` 
+- `sp500_ret_lag` 
+- `VIX_x_PostCovid` 
+ 
+This outcome suggests that daily gold returns may be difficult to predict using these macro-financial variables alone, possibly because gold returns are dominated by short-term noise. <hr class="ls0">#%% md 
+### 6.2 OLS Regression Results 
+ 
+The final interaction model was estimated using OLS with HC3 robust standard errors. The model included the following predictors: 
+ 
+- `Close_DX_Y_NYB` 
+- `wti_crude_oil_price` 
+- `sp500_ret_lag` 
+- `Close_VIX` 
+- `is_PostCovid` 
+- `VIX_x_PostCovid` 
+ 
+The main purpose of this specification was to test whether the relationship between market stress and gold returns changed in the post-COVID period. 
+ 
+The regression results show that the interaction term `VIX_x_PostCovid` is not statistically significant. In addition, `Close_VIX` and `is_PostCovid` are also not statistically significant. This means that the model does not provide strong evidence that the effect of VIX on gold returns changed after the post-COVID break. 
+ 
+Among the included variables, `Close_DX_Y_NYB` is the closest to significance, but it still does not reach the 5% significance level. Overall, the model has very low explanatory power, which indicates that the selected predictors explain only a very small share of the variation in daily gold returns. 
+ 
+Therefore, while the descriptive plots may suggest some visual differences across periods, the formal OLS results do not strongly support the Broken Haven hypothesis. 
+| Variable | Coefficient | p-value | Interpretation | 
+|----------|-------------|---------|----------------| 
+| Close_DX_Y_NYB | -0.0001 | 0.063 | Negative but not significant at the 5% level | 
+| wti_crude_oil_price | -9.458e-07 | 0.979 | No significant relationship | 
+| sp500_ret_lag | 0.0528 | 0.196 | No significant relationship | 
+| Close_VIX | 6.826e-06 | 0.892 | No significant relationship | 
+| is_PostCovid | 0.0021 | 0.174 | No significant shift in average gold returns | 
+| VIX_x_PostCovid | -2.582e-05 | 0.795 | No significant post-COVID change in the VIX effect | <hr class="ls0">#%% md 
+### 6.3 XGBoost Results 
+ 
+In addition to the OLS model, we applied XGBoost as a nonlinear machine learning benchmark to examine whether a more flexible specification could better capture the relationship between gold returns and macro-financial variables. 
+ 
+Using the same structural break date of March 16, 2022, the XGBoost model was trained on the pre-break sample and then evaluated on the post-break period. This approach allows us to test whether a model that performs well in the “old world” can still generalize after the suspected shift in market structure. 
+ 
+At the daily level, the XGBoost model does not perform well out of sample. The training RMSE is 4.761354%, while the testing RMSE increases to 2.153756%, compared with post-break market volatility of about 0.96%. In addition, the daily XGBoost model produces negative R-squared values in both the training and testing samples, which suggests that daily gold returns remain highly noisy and difficult to predict. 
+ 
+At the weekly level, however, the XGBoost model performs much better in-sample. It achieves a training RMSE of 1.985131% and a training R-squared of 0.9584, suggesting that nonlinear relationships may have been important in the pre-break period. The most important predictors in the weekly model are `wti_crude_oil_price` and `gold_vol_weekly`, which together account for most of the model’s predictive importance. 
+ 
+However, the weekly model also weakens noticeably in the post-break period. The testing RMSE rises to 2.089248%, and the testing R-squared falls to -0.0137. This suggests that even a stronger nonlinear model struggles to generalize after March 16, 2022. 
+ 
+Overall, the XGBoost results complement the OLS findings. They suggest that pre-break gold-return dynamics may contain nonlinear structure, but the predictive relationship becomes less stable in the post-break period. This provides additional support for the idea that the historical “safe-haven” relationship became harder to capture after the structural break. <hr class="ls0">#%% md 
+| Model | Train RMSE | Test RMSE | Train R² | Test R² | Main Takeaway | 
+|------|------------|-----------|----------|---------|---------------| 
+| Daily XGBoost | 4.761354% | 2.153756% | -0.1903 | -4.0756 | Very weak predictive power; daily returns remain noisy | 
+| Weekly XGBoost | 1.985131% | 2.089248% | 0.9584 | -0.0137 | Strong in-sample fit, but weak post-break generalization | <hr class="ls0">#%% md 
+# **7. Conclusion** 
+ 
+**This project set out to answer one central question: has gold's role as a safe-haven asset broken down since the COVID-19 pandemic?** Using LASSO variable selection, OLS regression, and XGBoost — at both daily and weekly frequencies — we tested whether the relationship between gold and market stress measurably shifted after March 2022. **The short answer is: the evidence points toward yes, but it's more subtle than a clean structural break.** 
+ 
+The linear models were largely unable to explain gold's movements using macro-financial variables alone, suggesting that on a day-to-day basis, gold returns behave closer to random noise than to a predictable, fundamentals-driven asset. **The most compelling evidence came from XGBoost at the weekly level — before 2022, the model found real, learnable patterns, with gold behaving primarily as a geopolitical and commodity proxy tracking crude oil. After 2022, those patterns vanished entirely.** A model that genuinely understood the Old World had nothing useful to say about the New World, which is difficult to attribute to chance alone. 
+ 
+**One limitation worth acknowledging is that every variable in this study measures what markets are doing — prices, returns, volatility — but none captures what investors are actually thinking.** Sentiment, narrative, and fear are arguably important gold drivers. **Future work could directly address this by augmenting the model with real-time sentiment variables — such as news sentiment indices or search trend data — to test whether the Broken Haven effect is better explained by a shift in how investors *perceive* gold than by any change in the underlying macro environment.** <hr class="ls0">#%% md 
+![image.png](attachment:cb49d53b-4443-4bde-9c76-d99345658898.png) <hr class="ls0">#%% md 
+# **6. SOURCES**  
+ 
+#### Bampinas, G., &amp; Panagiotidis, T. (2015). Are gold and silver a hedge against inflation? A two century perspective. International Review of Financial Analysis, 41, 267–276. https://doi.org/10.1016/j.irfa.2015.02.007 
+ 
+#### Board of Governors of the Federal Reserve System (US). (1980, November 3). M2. FRED, Federal Reserve Bank of St. Louis. https://fred.stlouisfed.org/series/WM2NS 
+ 
+#### Cohen, Gil &amp; Aiche, Avishay, 2023. &quot;Forecasting gold price using machine learning methodologies,&quot; Chaos, Solitons &amp; Fractals, Elsevier, vol. 175(P2). 
+ 
+   - Uses XGBoost and GBTR models to predict gold price fluctuates. Yielded promising accuracy with XGBoost when combine with lagged market variables. Did not account for Broken Haven as paper would have only had access to Old World Data 
+ 
+#### Faraj, H., McMillan, D., &amp; Al-Sabah, M. (2025). The diminishing lustre: Gold’s market volatility and the fading safe haven effect. Global Finance Journal, 101145–101145. https://doi.org/10.1016/j.gfj.2025.101145 
+ 
+#### Federal Reserve Bank of Cleveland. (1982a, January 1). 10-Year Expected Inflation. FRED, Federal Reserve Bank of St. Louis. https://fred.stlouisfed.org/series/EXPINF10YR 
+ 
+#### Federal Reserve Bank of Cleveland. (1982b, January 1). 10-Year Real Interest Rate. FRED, Federal Reserve Bank of St. Louis. https://fred.stlouisfed.org/series/REAINTRATREARAT10Y 
+ 
+#### Federal Reserve Bank of St. Louis. (2025, April 16). Inflation, Consumer Prices for the United States. Stlouisfed.org. https://fred.stlouisfed.org/series/FPCPITOTLZGUSA 
+ 
+#### FRED. (2025). 10-Year Treasury Constant Maturity Rate. FRED, Federal Reserve Bank of St. Louis. https://fred.stlouisfed.org/series/DGS10 
+ 
+#### International Monetary Fund. (1980, January 1). Global price of WTI Crude. FRED, Federal Reserve Bank of St. Louis. https://fred.stlouisfed.org/series/POILWTIUSDM 
+ 
+#### Jaffer, Z. (2024, June 26). Gold vs. Bonds and Stocks: Why Some Investors Choose Gold. Rolling Stone. https://www.rollingstone.com/culture-council/articles/gold-vs-bonds-stocks-some-investors-choose-gold-1235046412/ 
+ 
+#### JP Morgan. (2024, January 17). Will gold prices hit another all-time high? | J.P. Morgan Research. Www.jpmorgan.com. https://www.jpmorgan.com/insights/global-research/commodities/gold-prices 
+ 
+#### Li, Shumeng. (2023). The Impact of the Federal Reserve Raises the Interest Rates on the US Stock Market Index: The Dynamic Perspective. Advances in Economics, Management and Political Sciences. 61. 265-274. 10.54254/2754-1169/61/20231283.  
+ 
+#### Shreyansh Dangi. (2025). Gold-Silver Price VS Geopolitical Risk (1985–2025). Kaggle.com. https://www.kaggle.com/datasets/shreyanshdangi/gold-silver-price-vs-geopolitical-risk-19852025/data 
+ 
+#### The Assay. (2020, March 26). COVID-19 and the Gold Price. The Assay. https://www.theassay.com/articles/covid-19-and-the-gold-price/ 
+ 
+#### U.S. Bureau of Economic Analysis. (2025, April 30). Gross Domestic Product. Stlouisfed.org. https://fred.stlouisfed.org/series/GDP 
+ 
+#### World Gold Council. (2025a). Gold in the Global Economy: Market, mining and modernisation. World Gold Council. https://www.gold.org/about-gold/gold-global-economy 
+ 
+#### World Gold Council. (2025b, December 4). Gold Outlook 2026: Push ahead or pull back. World Gold Council. https://www.gold.org/goldhub/research/gold-outlook-2026 
+ 
+#### Yahoo Finance. (2026a). CBOE Volatility Index (^VIX) Historical Data - Yahoo Finance. Yahoo Finance. https://ca.finance.yahoo.com/quote/%5EVIX/history/?period1=662774400&amp;period2=1775002325 
+ 
+#### Yahoo Finance. (2026b). S&amp;P 500 (^GSPC) Historical Data - Yahoo Finance. Ca.finance.yahoo.com. https://ca.finance.yahoo.com/quote/%5EGSPC/history/ 
+ 
+#### Yahoo Finance. (2026c). US Dollar Index (DX-Y.NYB) Historical Data - Yahoo Finance. Yahoo Finance. https://ca.finance.yahoo.com/quote/DX-Y.NYB/history/?period1=662774400&amp;period2=1775010540 
+ 
+#### You, Wanhai &amp; Chen, Jianyong &amp; Xie, Haoqi &amp; Ren, Yinghua, 2025. &quot;Which uncertainty measure better predicts gold prices? New evidence from a CNN-LSTM approach,&quot; The North American Journal of Economics and Finance, Elsevier, vol. 76(C). 
+ 
+   - Uses CNN-LSTM neural network models to predict gold prices using economic policy uncertainty index and volatility indices which yieled better accuracy than other traditional LSTM and Vector Regression models. They however, only use data spannign 2018- September 2022 which may not fully embrace the long-run effects of the Broken Haven phenomenon 
+</span></pre>
+</body>
+</html>
